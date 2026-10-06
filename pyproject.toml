@@ -1,0 +1,36 @@
+[build-system]
+requires = [
+    "setuptools>=60",
+    "setuptools-scm>=8.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "RobotSNAP-ROS2"
+version = "0.1.0"
+authors = [
+  { name="Adam Gouguet", email="adam.gouguet@imt-nord-europe.fr" },
+]
+description = "The ROS2 transport of RobotSNAP: a client on a ROS2 graph, and a mirror of the bridge"
+dependencies = ["RobotSNAP"]
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+# The core knows no ROS2: it looks this name up in the entry-point group it owns. Installing this
+# package beside RobotSNAP is what makes a run reach the graph.
+[project.entry-points."robotsnap.transports"]
+ros2 = "robotsnap_ros2"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["robotsnap_ros2*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# ``src`` for the package, ``tests`` so the moved suites import the fake Unity peer of
+# ``tests/unity_peer.py`` rather than carrying their own copy.
+pythonpath = ["src", "tests"]
