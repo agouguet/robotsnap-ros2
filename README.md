@@ -32,6 +32,37 @@ core's extra does the rest:
 `[env]` brings the Gymnasium interface the episode loop is built on; `[viewer]` is only needed if
 you also want the window.
 
+## Transforms
+
+Unity names the frames its streams sit in but publishes no `/tf`, and a graph reader with only frame
+names and no links draws nothing: RViz2 cannot place the map, the robot or the lidar, and a
+navigation stack sees three unconnected streams. The mirror derives the tree from the messages
+themselves and publishes it:
+
+```
+map --static--> odom --dynamic--> base_link --static--> laser
+```
+
+- `odom -> base_link` is the robot's pose, on `/tf` at the odometry rate, read straight from
+  `nav_msgs/Odometry` (`pose.pose`, `child_frame_id`) and stamped with its header.
+- `map -> odom` and `base_link -> laser` are identity links, on `/tf_static` once both frames they
+  join have been seen. `/tf_static` is latched (`transient_local`, `reliable`, depth 1), so RViz2
+  opened late, or a navigation stack started after the map, still receives them.
+
+Every frame is normalised before publication: a leading `/` is removed and the name is trimmed,
+because tf2 rejects a frame id that starts with a slash - and the session does spell its frames that
+way (`/map`, `/odom`). A robot in a fleet gets its own tree off its own namespace: `/robot_2/odom`
+and `/robot_2/scan` give `map -> robot_2/odom` and `robot_2/base_link -> robot_2/laser`.
+
+Two things worth knowing:
+
+- **The application has priority.** When the session publishes its own `/tf` or `/tf_static`, the
+  mirror republishes it like any other stream and does not synthesise that topic - a Unity build that
+  already broadcasts a tree, or a scenario with a fixed calibration, keeps it untouched.
+- **The lidar link is flat.** `base_link -> laser` carries zero translation, so the sensor sits at
+  the robot's origin. In a top-down 2D view (RViz2, Nav2's costmaps) that is the same picture, since
+  only x, y and yaw are read; a sensor mounted high or offset in 3D would need a real calibration.
+
 ## How the core finds it
 
 The core knows nothing about ROS2. It owns one entry-point group, `robotsnap.transports`, and
